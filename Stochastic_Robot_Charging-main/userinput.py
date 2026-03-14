@@ -1,7 +1,7 @@
 from z3 import *
 import random
 
-# ---------------- USER INPUT ----------------
+#  USER INPUT 
 
 rows = int(input("Enter rows: "))
 cols = int(input("Enter cols: "))
@@ -27,16 +27,16 @@ yc_start = int(input("Charger start y: "))
 b1_init = int(input("Worker1 battery: "))
 b2_init = int(input("Worker2 battery: "))
 
-# -------- STOCHASTIC BATTERY DISCHARGE --------
+#  STOCHASTIC BATTERY DISCHARGE 
 
 cost1 = [1 + random.uniform(0,0.5) for _ in range(T)]
 cost2 = [1 + random.uniform(0,0.5) for _ in range(T)]
 
-# -------- SOLVER --------
+#  SOLVER 
 
 opt = Optimize()
 
-# -------- VARIABLES --------
+#  VARIABLES 
 
 x1 = [Int(f"x1_{t}") for t in range(T)]
 y1 = [Int(f"y1_{t}") for t in range(T)]
@@ -56,7 +56,7 @@ charge2 = [Bool(f"charge2_{t}") for t in range(T)]
 wait1 = [Int(f"wait1_{t}") for t in range(T)]
 wait2 = [Int(f"wait2_{t}") for t in range(T)]
 
-# -------- INITIAL CONDITIONS --------
+#  INITIAL CONDITIONS 
 
 opt.add(x1[0] == x1_start, y1[0] == y1_start)
 opt.add(x2[0] == x2_start, y2[0] == y2_start)
@@ -66,7 +66,7 @@ opt.add(xc[0] == xc_start, yc[0] == yc_start)
 opt.add(b1[0] == b1_init)
 opt.add(b2[0] == b2_init)
 
-# -------- GRID BOUNDS --------
+#  GRID BOUNDS 
 
 for t in range(T):
 
@@ -79,7 +79,7 @@ for t in range(T):
     opt.add(xc[t] >= 0, xc[t] < rows)
     opt.add(yc[t] >= 0, yc[t] < cols)
 
-# -------- MOTION CONSTRAINTS --------
+#  MOTION CONSTRAINTS : manhattan movement
 
 for t in range(T-1):
 
@@ -88,7 +88,7 @@ for t in range(T-1):
 
     opt.add(Abs(xc[t+1]-xc[t]) + Abs(yc[t+1]-yc[t]) <= 1)
 
-# -------- ROBOT STOPS IF BATTERY DEAD --------
+#  ROBOT STOPS IF BATTERY DEAD 
 
 for t in range(T-1):
 
@@ -104,7 +104,7 @@ for t in range(T-1):
            True)
     )
 
-# -------- BATTERY UPDATE --------
+#  BATTERY UPDATE 
 
 for t in range(T-1):
 
@@ -122,7 +122,7 @@ for t in range(T-1):
            b2[t] - cost2[t])
     )
 
-# -------- CHARGER CAN CHARGE ONLY ONE ROBOT --------
+# CHARGER CAN CHARGE ONLY ONE ROBOT 
 
 for t in range(T):
 
@@ -134,7 +134,7 @@ for t in range(T):
         )
     )
 
-# -------- CHARGING LOCATION CONSTRAINT --------
+#  CHARGING LOCATION CONSTRAINT 
 
 for t in range(T):
 
@@ -148,7 +148,7 @@ for t in range(T):
                 And(xc[t] == x2[t], yc[t] == y2[t]))
     )
 
-# -------- REACTIVE CHARGING (ONLY WHEN BATTERY DEAD) --------
+#  REACTIVE CHARGING (ONLY WHEN BATTERY DEAD) 
 
 for t in range(T):
 
@@ -160,26 +160,27 @@ for t in range(T):
         Implies(charge2[t], b2[t] <= 0)
     )
 
-# -------- WAITING TIME --------
+#  WAITING TIME 
 
 for t in range(T):
 
     opt.add(wait1[t] == If(And(b1[t] <= 0, Not(charge1[t])), 1, 0))
     opt.add(wait2[t] == If(And(b2[t] <= 0, Not(charge2[t])), 1, 0))
 
-# -------- OBJECTIVE --------
+#  OBJECTIVE 
 
 total_wait = Sum(wait1) + Sum(wait2)
 
 opt.minimize(total_wait)
 
-# -------- SOLVE --------
+# SOLVE
 
 if opt.check() == sat:
 
     m = opt.model()
 
     print("\nTotal wait:", m.evaluate(total_wait))
+    
 
 else:
 
