@@ -1,95 +1,145 @@
 # generator.py
-# This program generates a Z3 constraint model automatically
+# Generates a full worker-charger Z3 model automatically
 
-num_robots = int(input("Enter number of robots: "))
-time_steps = int(input("Enter number of time steps: "))
+num_workers = int(input("Number of workers: "))
+rows = int(input("Grid rows: "))
+cols = int(input("Grid cols: "))
+T = int(input("Time horizon: "))
 
-# open file that will contain solver code
-file = open("generated_model.py", "w")
+file = open("generated_model.py","w")
 
-# write imports
-file.write("from z3 import *\n\n")
+file.write("from z3 import *\n")
+file.write("import random\n\n")
 
-file.write("solver = Solver()\n\n")
+file.write(f"rows = {rows}\n")
+file.write(f"cols = {cols}\n")
+file.write(f"T = {T}\n\n")
 
-# =========================
-# VARIABLE GENERATION
-# =========================
+file.write("opt = Optimize()\n\n")
 
-file.write("# Robot position variables\n")
+# WORKER VARIABLES
+for i in range(num_workers):
 
-for i in range(num_robots):
-    for t in range(time_steps):
-        file.write(f"x_{i}_{t} = Int('x_{i}_{t}')\n")
-        file.write(f"y_{i}_{t} = Int('y_{i}_{t}')\n")
+    file.write(f"x{i} = [Int('x{i}_'+str(t)) for t in range(T)]\n")
+    file.write(f"y{i} = [Int('y{i}_'+str(t)) for t in range(T)]\n")
+    file.write(f"b{i} = [Real('b{i}_'+str(t)) for t in range(T)]\n")
+    file.write(f"charge{i} = [Bool('charge{i}_'+str(t)) for t in range(T)]\n")
+    file.write(f"wait{i} = [Int('wait{i}_'+str(t)) for t in range(T)]\n\n")
+
+# CHARGER VARIABLES
+file.write("xc = [Int('xc_'+str(t)) for t in range(T)]\n")
+file.write("yc = [Int('yc_'+str(t)) for t in range(T)]\n\n")
+
+# INITIAL CONDITIONS
+for i in range(num_workers):
+
+    x = int(input(f"Worker {i} start x: "))
+    y = int(input(f"Worker {i} start y: "))
+    b = int(input(f"Worker {i} battery: "))
+
+    file.write(f"opt.add(x{i}[0] == {x})\n")
+    file.write(f"opt.add(y{i}[0] == {y})\n")
+    file.write(f"opt.add(b{i}[0] == {b})\n\n")
+
+cx = int(input("Charger start x: "))
+cy = int(input("Charger start y: "))
+
+file.write(f"opt.add(xc[0] == {cx})\n")
+file.write(f"opt.add(yc[0] == {cy})\n\n")
+
+# GRID BOUNDS
+file.write("for t in range(T):\n")
+
+for i in range(num_workers):
+
+    file.write(f"    opt.add(x{i}[t] >= 0, x{i}[t] < rows)\n")
+    file.write(f"    opt.add(y{i}[t] >= 0, y{i}[t] < cols)\n")
+
+file.write("    opt.add(xc[t] >= 0, xc[t] < rows)\n")
+file.write("    opt.add(yc[t] >= 0, yc[t] < cols)\n\n")
+
+# MOVEMENT CONSTRAINTS
+file.write("for t in range(T-1):\n")
+
+for i in range(num_workers):
+
+    file.write(f"    opt.add(Abs(x{i}[t+1]-x{i}[t]) + Abs(y{i}[t+1]-y{i}[t]) <= 1)\n")
+
+file.write("    opt.add(Abs(xc[t+1]-xc[t]) + Abs(yc[t+1]-yc[t]) <= 1)\n\n")
+
+# BATTERY UPDATE
+file.write("cost = [1 + random.uniform(0,0.5) for _ in range(T)]\n\n")
+
+file.write("for t in range(T-1):\n")
+
+for i in range(num_workers):
+
+    file.write(
+        f"    opt.add(b{i}[t+1] == If(charge{i}[t], b{i}[t] + 5, b{i}[t] - cost[t]))\n"
+    )
 
 file.write("\n")
 
-# =========================
-# INITIAL POSITION INPUT
-# =========================
+# CHARGING LOCATION
+file.write("for t in range(T):\n")
 
-file.write("# Initial position constraints\n")
+for i in range(num_workers):
 
-for i in range(num_robots):
-    x = int(input(f"Initial X position for robot {i}: "))
-    y = int(input(f"Initial Y position for robot {i}: "))
-
-    file.write(f"solver.add(x_{i}_0 == {x})\n")
-    file.write(f"solver.add(y_{i}_0 == {y})\n")
+    file.write(
+        f"    opt.add(Implies(charge{i}[t], And(xc[t] == x{i}[t], yc[t] == y{i}[t])))\n"
+    )
 
 file.write("\n")
 
-# =========================
-# GRID BOUNDARY CONSTRAINT
-# =========================
+# ONLY ONE ROBOT CHARGED
+file.write("for t in range(T):\n")
+file.write("    opt.add(Sum([")
 
-grid_size = int(input("Enter grid size: "))
+for i in range(num_workers):
 
-file.write("# Grid boundary constraints\n")
+    if i != num_workers-1:
+        file.write(f"If(charge{i}[t],1,0),")
+    else:
+        file.write(f"If(charge{i}[t],1,0)")
 
-for i in range(num_robots):
-    for t in range(time_steps):
+file.write("]) <= 1)\n\n")
 
-        file.write(f"solver.add(x_{i}_{t} >= 0)\n")
-        file.write(f"solver.add(x_{i}_{t} <= {grid_size})\n")
+# WAITING TIME
+file.write("for t in range(T):\n")
 
-        file.write(f"solver.add(y_{i}_{t} >= 0)\n")
-        file.write(f"solver.add(y_{i}_{t} <= {grid_size})\n")
+for i in range(num_workers):
 
-file.write("\n")
-
-# =========================
-# MOVEMENT CONSTRAINT
-# =========================
-
-file.write("# Movement constraints (Manhattan distance <= 1)\n")
-
-for i in range(num_robots):
-    for t in range(time_steps - 1):
-
-        file.write(
-            f"solver.add(Abs(x_{i}_{t+1} - x_{i}_{t}) + Abs(y_{i}_{t+1} - y_{i}_{t}) <= 1)\n"
-        )
+    file.write(
+        f"    opt.add(wait{i}[t] == If(And(b{i}[t] <= 0, Not(charge{i}[t])),1,0))\n"
+    )
 
 file.write("\n")
 
-# =========================
-# SOLVER OUTPUT
-# =========================
+# OBJECTIVE
+file.write("total_wait = Sum([")
 
-file.write("result = solver.check()\n")
-file.write("print('Solver result:', result)\n")
+for i in range(num_workers):
 
-file.write("if result == sat:\n")
-file.write("    model = solver.model()\n")
-file.write("    print('\\nModel:')\n")
+    if i != num_workers-1:
+        file.write(f"Sum(wait{i}),")
+    else:
+        file.write(f"Sum(wait{i})")
 
-for i in range(num_robots):
-    for t in range(time_steps):
-        file.write(f"    print('Robot {i} at time {t}:', model[x_{i}_{t}], model[y_{i}_{t}])\n")
+file.write("])\n")
+
+file.write("opt.minimize(total_wait)\n\n")
+
+# SOLVE
+file.write("if opt.check() == sat:\n")
+file.write("    m = opt.model()\n")
+file.write("    print('Total wait:', m.evaluate(total_wait))\n\n")
+
+for i in range(num_workers):
+
+    file.write("    print('\\nWorker',"+str(i)+")\n")
+    file.write("    for t in range(T):\n")
+    file.write(f"        print(t, m.evaluate(x{i}[t]), m.evaluate(y{i}[t]), m.evaluate(b{i}[t]))\n")
 
 file.close()
 
-print("\n✅ Solver model generated successfully!")
-print("Run 'python generated_model.py' to execute it.")
+print("Model generated successfully -> generated_model.py")
