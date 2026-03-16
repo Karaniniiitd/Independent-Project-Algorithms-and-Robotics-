@@ -1,5 +1,5 @@
-# generator.py
-# Generates a Z3 model for N workers and C chargers
+# generator_same_logic.py
+from z3 import *
 
 workers = int(input("Number of workers: "))
 chargers = int(input("Number of chargers: "))
@@ -20,29 +20,23 @@ file.write(f"T={T}\n\n")
 
 file.write("opt = Optimize()\n\n")
 
-# =============================
-# WORKER VARIABLES
-# =============================
+# ---------------- WORKER VARIABLES ----------------
 
 for w in range(workers):
 
     file.write(f"x{w}=[Int('x{w}_'+str(t)) for t in range(T)]\n")
     file.write(f"y{w}=[Int('y{w}_'+str(t)) for t in range(T)]\n")
-    file.write(f"b{w}=[Int('b{w}_'+str(t)) for t in range(T)]\n")
+    file.write(f"b{w}=[Real('b{w}_'+str(t)) for t in range(T)]\n")
     file.write(f"wait{w}=[Int('wait{w}_'+str(t)) for t in range(T)]\n\n")
 
-# =============================
-# CHARGER VARIABLES
-# =============================
+# ---------------- CHARGER VARIABLES ----------------
 
 for c in range(chargers):
 
     file.write(f"xc{c}=[Int('xc{c}_'+str(t)) for t in range(T)]\n")
     file.write(f"yc{c}=[Int('yc{c}_'+str(t)) for t in range(T)]\n\n")
 
-# =============================
-# ASSIGNMENT VARIABLES
-# =============================
+# ---------------- ASSIGNMENT VARIABLES ----------------
 
 for w in range(workers):
     for c in range(chargers):
@@ -53,9 +47,7 @@ for w in range(workers):
 
 file.write("\n")
 
-# =============================
-# INITIAL WORKER CONDITIONS
-# =============================
+# ---------------- INITIAL CONDITIONS ----------------
 
 for w in range(workers):
 
@@ -67,10 +59,6 @@ for w in range(workers):
     file.write(f"opt.add(y{w}[0]=={y})\n")
     file.write(f"opt.add(b{w}[0]=={b})\n\n")
 
-# =============================
-# INITIAL CHARGER CONDITIONS
-# =============================
-
 for c in range(chargers):
 
     x=int(input(f"Charger {c} start x: "))
@@ -79,9 +67,7 @@ for c in range(chargers):
     file.write(f"opt.add(xc{c}[0]=={x})\n")
     file.write(f"opt.add(yc{c}[0]=={y})\n\n")
 
-# =============================
-# GRID BOUNDS
-# =============================
+# ---------------- GRID BOUNDS ----------------
 
 file.write("for t in range(T):\n")
 
@@ -97,9 +83,7 @@ for c in range(chargers):
 
 file.write("\n")
 
-# =============================
-# MOVEMENT CONSTRAINTS
-# =============================
+# ---------------- MOTION ----------------
 
 file.write("for t in range(T-1):\n")
 
@@ -117,26 +101,19 @@ for c in range(chargers):
 
 file.write("\n")
 
-# =============================
-# BATTERY UPDATE
-# =============================
-
-file.write("cost=[1 for _ in range(T)]\n")
+# ---------------- ROBOT STOPS IF DEAD ----------------
 
 file.write("for t in range(T-1):\n")
 
 for w in range(workers):
 
     file.write(
-    f" opt.add(b{w}[t+1]==b{w}[t]-cost[t]+"
-    f"Sum([If(assign_{w}_{c}[t],5,0) for c in range(chargers)]))\n"
+    f" opt.add(If(b{w}[t]<=0, And(x{w}[t+1]==x{w}[t], y{w}[t+1]==y{w}[t]), True))\n"
     )
 
 file.write("\n")
 
-# =============================
-# CHARGING LOCATION CONSTRAINT
-# =============================
+# ---------------- CHARGING LOCATION ----------------
 
 file.write("for t in range(T):\n")
 
@@ -145,49 +122,79 @@ for w in range(workers):
 
         file.write(
         f" opt.add(Implies(assign_{w}_{c}[t],"
-        f"And(xc{c}[t]==x{w}[t],yc{c}[t]==y{w}[t])))\n"
+        f"And(xc{c}[t]==x{w}[t], yc{c}[t]==y{w}[t])))\n"
         )
 
 file.write("\n")
 
-# =============================
-# CHARGER SERVES ONE WORKER
-# =============================
+# ---------------- ONE CHARGER PER WORKER ----------------
 
 file.write("for t in range(T):\n")
+
+for w in range(workers):
+
+    file.write(
+    f" opt.add(Sum([If(assign_{w}_{c}[t],1,0) for c in range(chargers)])<=1)\n"
+    )
+
+file.write("\n")
+
+# ---------------- ONE WORKER PER CHARGER ----------------
 
 for c in range(chargers):
 
     file.write(
-    f" opt.add(Sum([If(assign_{w}_{c}[t],1,0) "
-    f"for w in range(workers)])<=1)\n"
+    f"for t in range(T): opt.add(Sum([If(assign_{w}_{c}[t],1,0) for w in range(workers)])<=1)\n"
     )
 
 file.write("\n")
 
-# =============================
-# WAIT TIME
-# =============================
+# ---------------- REACTIVE CHARGING ----------------
+
+file.write("for t in range(T):\n")
+
+for w in range(workers):
+    for c in range(chargers):
+
+        file.write(
+        f" opt.add(Implies(assign_{w}_{c}[t], b{w}[t] <= 0))\n"
+        )
+
+file.write("\n")
+
+# ---------------- BATTERY UPDATE ----------------
+
+file.write("for t in range(T-1):\n")
+
+for w in range(workers):
+
+    file.write(
+    f" opt.add(b{w}[t+1]==If(Or([assign_{w}_{c}[t] for c in range(chargers)]),"
+    f" b{w}[t]+5, b{w}[t]-1))\n"
+    )
+
+file.write("\n")
+
+# ---------------- WAIT TIME ----------------
 
 file.write("for t in range(T):\n")
 
 for w in range(workers):
 
     file.write(
-    f" opt.add(wait{w}[t]==If(b{w}[t]<=0,1,0))\n"
+    f" opt.add(wait{w}[t]==If(And(b{w}[t]<=0,"
+    f"Not(Or([assign_{w}_{c}[t] for c in range(chargers)]))),1,0))\n"
     )
 
 file.write("\n")
 
-# =============================
-# OBJECTIVE
-# =============================
+# ---------------- OBJECTIVE ----------------
 
-file.write("total_wait=Sum([")
+file.write("total_wait = Sum([")
 
 for w in range(workers):
 
-    if w!=workers-1:
+    if w != workers-1:
         file.write(f"Sum(wait{w}),")
     else:
         file.write(f"Sum(wait{w})")
@@ -196,45 +203,12 @@ file.write("])\n")
 
 file.write("opt.minimize(total_wait)\n\n")
 
-# =============================
-# SOLVE + PRINT FULL MODEL
-# =============================
-
 file.write("if opt.check()==sat:\n")
 file.write(" m=opt.model()\n")
-file.write(" print('Total wait:',m.evaluate(total_wait))\n\n")
-
-file.write(" print('\\nWORKERS')\n")
-
-for w in range(workers):
-
-    file.write(f" print('\\nWorker {w}')\n")
-    file.write(" for t in range(T):\n")
-    file.write(
-    f"  print('t',t,'pos',m.evaluate(x{w}[t]),m.evaluate(y{w}[t]),'battery',m.evaluate(b{w}[t]))\n"
-    )
-
-file.write("\n print('\\nCHARGERS')\n")
-
-for c in range(chargers):
-
-    file.write(f" print('\\nCharger {c}')\n")
-    file.write(" for t in range(T):\n")
-    file.write(
-    f"  print('t',t,'pos',m.evaluate(xc{c}[t]),m.evaluate(yc{c}[t]))\n"
-    )
-
-file.write("\n print('\\nASSIGNMENTS')\n")
-
-for w in range(workers):
-    for c in range(chargers):
-
-        file.write(f" print('\\nWorker {w} charged by Charger {c}')\n")
-        file.write(" for t in range(T):\n")
-        file.write(
-        f"  print('t',t,m.evaluate(assign_{w}_{c}[t]))\n"
-        )
+file.write(" print('Total wait:',m.evaluate(total_wait))\n")
+file.write("else:\n")
+file.write(" print('UNSAT')\n")
 
 file.close()
 
-print("\nModel generated successfully -> generated_model.py")
+print("Generated model with same logic as base program")
