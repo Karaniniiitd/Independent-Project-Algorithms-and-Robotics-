@@ -8,24 +8,26 @@ T=8
 
 opt = Optimize()
 
+cost = [[1.4222109257625242, 1.3789772014701511, 1.2102857904154225, 1.1294583751464817, 1.2556373606843043, 1.2024670687252073, 1.3918992945173863, 1.1516563630394638], [1.238298477076178, 1.2916910197275155, 1.4540564425976676, 1.2523434279086951, 1.140918922199852, 1.377902102078612, 1.309184498337666, 1.1252531706812203], [1.45487312798412, 1.4913927380188265, 1.4051086179982948, 1.4510829752197913, 1.1550737846596664, 1.3649158741300642, 1.4494191439839967, 1.3419919659577206], [1.2360713577263567, 1.050350604034183, 1.2170859177268918, 1.305443486721901, 1.456505526618949, 1.4833031838853794, 1.2385048882763585, 1.43265496388582]]
+
 x0=[Int('x0_'+str(t)) for t in range(T)]
 y0=[Int('y0_'+str(t)) for t in range(T)]
-b0=[Int('b0_'+str(t)) for t in range(T)]
+b0=[Real('b0_'+str(t)) for t in range(T)]
 wait0=[Int('wait0_'+str(t)) for t in range(T)]
 
 x1=[Int('x1_'+str(t)) for t in range(T)]
 y1=[Int('y1_'+str(t)) for t in range(T)]
-b1=[Int('b1_'+str(t)) for t in range(T)]
+b1=[Real('b1_'+str(t)) for t in range(T)]
 wait1=[Int('wait1_'+str(t)) for t in range(T)]
 
 x2=[Int('x2_'+str(t)) for t in range(T)]
 y2=[Int('y2_'+str(t)) for t in range(T)]
-b2=[Int('b2_'+str(t)) for t in range(T)]
+b2=[Real('b2_'+str(t)) for t in range(T)]
 wait2=[Int('wait2_'+str(t)) for t in range(T)]
 
 x3=[Int('x3_'+str(t)) for t in range(T)]
 y3=[Int('y3_'+str(t)) for t in range(T)]
-b3=[Int('b3_'+str(t)) for t in range(T)]
+b3=[Real('b3_'+str(t)) for t in range(T)]
 wait3=[Int('wait3_'+str(t)) for t in range(T)]
 
 xc0=[Int('xc0_'+str(t)) for t in range(T)]
@@ -87,84 +89,57 @@ for t in range(T-1):
  opt.add(Abs(xc0[t+1]-xc0[t])+Abs(yc0[t+1]-yc0[t])<=1)
  opt.add(Abs(xc1[t+1]-xc1[t])+Abs(yc1[t+1]-yc1[t])<=1)
 
-cost=[1 for _ in range(T)]
 for t in range(T-1):
- opt.add(b0[t+1]==b0[t]-cost[t]+Sum([If(assign_0_1[t],5,0) for c in range(chargers)]))
- opt.add(b1[t+1]==b1[t]-cost[t]+Sum([If(assign_1_1[t],5,0) for c in range(chargers)]))
- opt.add(b2[t+1]==b2[t]-cost[t]+Sum([If(assign_2_1[t],5,0) for c in range(chargers)]))
- opt.add(b3[t+1]==b3[t]-cost[t]+Sum([If(assign_3_1[t],5,0) for c in range(chargers)]))
+ opt.add(If(b0[t]<=0, And(x0[t+1]==x0[t], y0[t+1]==y0[t]), True))
+ opt.add(If(b1[t]<=0, And(x1[t+1]==x1[t], y1[t+1]==y1[t]), True))
+ opt.add(If(b2[t]<=0, And(x2[t+1]==x2[t], y2[t+1]==y2[t]), True))
+ opt.add(If(b3[t]<=0, And(x3[t+1]==x3[t], y3[t+1]==y3[t]), True))
 
 for t in range(T):
- opt.add(Implies(assign_0_0[t],And(xc0[t]==x0[t],yc0[t]==y0[t])))
- opt.add(Implies(assign_0_1[t],And(xc1[t]==x0[t],yc1[t]==y0[t])))
- opt.add(Implies(assign_1_0[t],And(xc0[t]==x1[t],yc0[t]==y1[t])))
- opt.add(Implies(assign_1_1[t],And(xc1[t]==x1[t],yc1[t]==y1[t])))
- opt.add(Implies(assign_2_0[t],And(xc0[t]==x2[t],yc0[t]==y2[t])))
- opt.add(Implies(assign_2_1[t],And(xc1[t]==x2[t],yc1[t]==y2[t])))
- opt.add(Implies(assign_3_0[t],And(xc0[t]==x3[t],yc0[t]==y3[t])))
- opt.add(Implies(assign_3_1[t],And(xc1[t]==x3[t],yc1[t]==y3[t])))
+ opt.add(Implies(assign_0_0[t],And(xc0[t]==x0[t], yc0[t]==y0[t])))
+ opt.add(Implies(assign_0_1[t],And(xc1[t]==x0[t], yc1[t]==y0[t])))
+ opt.add(Implies(assign_1_0[t],And(xc0[t]==x1[t], yc0[t]==y1[t])))
+ opt.add(Implies(assign_1_1[t],And(xc1[t]==x1[t], yc1[t]==y1[t])))
+ opt.add(Implies(assign_2_0[t],And(xc0[t]==x2[t], yc0[t]==y2[t])))
+ opt.add(Implies(assign_2_1[t],And(xc1[t]==x2[t], yc1[t]==y2[t])))
+ opt.add(Implies(assign_3_0[t],And(xc0[t]==x3[t], yc0[t]==y3[t])))
+ opt.add(Implies(assign_3_1[t],And(xc1[t]==x3[t], yc1[t]==y3[t])))
 
 for t in range(T):
+ opt.add(Sum([If(assign_0_1[t],1,0) for c in range(chargers)])<=1)
+ opt.add(Sum([If(assign_1_1[t],1,0) for c in range(chargers)])<=1)
+ opt.add(Sum([If(assign_2_1[t],1,0) for c in range(chargers)])<=1)
+ opt.add(Sum([If(assign_3_1[t],1,0) for c in range(chargers)])<=1)
  opt.add(Sum([If(assign_3_0[t],1,0) for w in range(workers)])<=1)
  opt.add(Sum([If(assign_3_1[t],1,0) for w in range(workers)])<=1)
 
 for t in range(T):
- opt.add(wait0[t]==If(b0[t]<=0,1,0))
- opt.add(wait1[t]==If(b1[t]<=0,1,0))
- opt.add(wait2[t]==If(b2[t]<=0,1,0))
- opt.add(wait3[t]==If(b3[t]<=0,1,0))
+ opt.add(Implies(assign_0_0[t], b0[t] <= 0))
+ opt.add(Implies(assign_0_1[t], b0[t] <= 0))
+ opt.add(Implies(assign_1_0[t], b1[t] <= 0))
+ opt.add(Implies(assign_1_1[t], b1[t] <= 0))
+ opt.add(Implies(assign_2_0[t], b2[t] <= 0))
+ opt.add(Implies(assign_2_1[t], b2[t] <= 0))
+ opt.add(Implies(assign_3_0[t], b3[t] <= 0))
+ opt.add(Implies(assign_3_1[t], b3[t] <= 0))
 
-total_wait=Sum([Sum(wait0),Sum(wait1),Sum(wait2),Sum(wait3)])
+for t in range(T-1):
+ opt.add(b0[t+1]==If(Or(assign_0_0[t],assign_0_1[t]), b0[t]+5, b0[t]-cost[0][t]))
+ opt.add(b1[t+1]==If(Or(assign_1_0[t],assign_1_1[t]), b1[t]+5, b1[t]-cost[1][t]))
+ opt.add(b2[t+1]==If(Or(assign_2_0[t],assign_2_1[t]), b2[t]+5, b2[t]-cost[2][t]))
+ opt.add(b3[t+1]==If(Or(assign_3_0[t],assign_3_1[t]), b3[t]+5, b3[t]-cost[3][t]))
+
+for t in range(T):
+ opt.add(wait0[t]==If(And(b0[t]<=0,Not(Or(assign_0_0[t],assign_0_1[t]))),1,0))
+ opt.add(wait1[t]==If(And(b1[t]<=0,Not(Or(assign_1_0[t],assign_1_1[t]))),1,0))
+ opt.add(wait2[t]==If(And(b2[t]<=0,Not(Or(assign_2_0[t],assign_2_1[t]))),1,0))
+ opt.add(wait3[t]==If(And(b3[t]<=0,Not(Or(assign_3_0[t],assign_3_1[t]))),1,0))
+
+total_wait = Sum([Sum(wait0),Sum(wait1),Sum(wait2),Sum(wait3)])
 opt.minimize(total_wait)
 
 if opt.check()==sat:
  m=opt.model()
- print('Total wait:',m.evaluate(total_wait))
-
- print('\nWORKERS')
- print('\nWorker 0')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(x0[t]),m.evaluate(y0[t]),'battery',m.evaluate(b0[t]))
- print('\nWorker 1')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(x1[t]),m.evaluate(y1[t]),'battery',m.evaluate(b1[t]))
- print('\nWorker 2')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(x2[t]),m.evaluate(y2[t]),'battery',m.evaluate(b2[t]))
- print('\nWorker 3')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(x3[t]),m.evaluate(y3[t]),'battery',m.evaluate(b3[t]))
-
- print('\nCHARGERS')
- print('\nCharger 0')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(xc0[t]),m.evaluate(yc0[t]))
- print('\nCharger 1')
- for t in range(T):
-  print('t',t,'pos',m.evaluate(xc1[t]),m.evaluate(yc1[t]))
-
- print('\nASSIGNMENTS')
- print('\nWorker 0 charged by Charger 0')
- for t in range(T):
-  print('t',t,m.evaluate(assign_0_0[t]))
- print('\nWorker 0 charged by Charger 1')
- for t in range(T):
-  print('t',t,m.evaluate(assign_0_1[t]))
- print('\nWorker 1 charged by Charger 0')
- for t in range(T):
-  print('t',t,m.evaluate(assign_1_0[t]))
- print('\nWorker 1 charged by Charger 1')
- for t in range(T):
-  print('t',t,m.evaluate(assign_1_1[t]))
- print('\nWorker 2 charged by Charger 0')
- for t in range(T):
-  print('t',t,m.evaluate(assign_2_0[t]))
- print('\nWorker 2 charged by Charger 1')
- for t in range(T):
-  print('t',t,m.evaluate(assign_2_1[t]))
- print('\nWorker 3 charged by Charger 0')
- for t in range(T):
-  print('t',t,m.evaluate(assign_3_0[t]))
- print('\nWorker 3 charged by Charger 1')
- for t in range(T):
-  print('t',t,m.evaluate(assign_3_1[t]))
+ print("Total wait:",m.evaluate(total_wait))
+else:
+ print("UNSAT")
