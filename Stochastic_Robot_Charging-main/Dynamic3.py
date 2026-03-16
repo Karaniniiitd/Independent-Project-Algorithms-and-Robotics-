@@ -49,23 +49,18 @@ opt = Optimize()
 
 # ---------------- VARIABLES ----------------
 
-# worker positions
 x = [[Int(f"x_{i}_{t}") for t in range(T)] for i in range(n)]
 y = [[Int(f"y_{i}_{t}") for t in range(T)] for i in range(n)]
 
-# charger positions
 xc = [[Int(f"xc_{j}_{t}") for t in range(T)] for j in range(c)]
 yc = [[Int(f"yc_{j}_{t}") for t in range(T)] for j in range(c)]
 
-# battery
 b = [[Real(f"b_{i}_{t}") for t in range(T)] for i in range(n)]
 
-# charging assignment
 charge = [[[Bool(f"charge_{j}_{i}_{t}") for t in range(T)]
             for i in range(n)]
             for j in range(c)]
 
-# waiting
 wait = [[Int(f"wait_{i}_{t}") for t in range(T)] for i in range(n)]
 
 # ---------------- INITIAL CONDITIONS ----------------
@@ -145,10 +140,7 @@ for i in range(n):
     for t in range(T):
 
         opt.add(
-            Sum([
-                If(charge[j][i][t],1,0)
-                for j in range(c)
-            ]) <= 1
+            Sum([If(charge[j][i][t],1,0) for j in range(c)]) <= 1
         )
 
 # ---------------- ONE WORKER PER CHARGER ----------------
@@ -157,13 +149,10 @@ for j in range(c):
     for t in range(T):
 
         opt.add(
-            Sum([
-                If(charge[j][i][t],1,0)
-                for i in range(n)
-            ]) <= 1
+            Sum([If(charge[j][i][t],1,0) for i in range(n)]) <= 1
         )
 
-# ---------------- REACTIVE CHARGING (CRITICAL FIX) ----------------
+# ---------------- REACTIVE CHARGING ----------------
 
 for j in range(c):
     for i in range(n):
