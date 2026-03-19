@@ -1,28 +1,26 @@
 from z3 import *
 import random
 
-rows = int(input("Enter grid rows: "))
-cols = int(input("Enter grid cols: "))
-T = int(input("Enter time horizon: "))
+n = int(input("Number of workers: "))
+c = int(input("Number of chargers: "))
 
-n = int(input("Enter number of workers: "))
-c = int(input("Enter number of chargers: "))
+rows = int(input("Grid rows: "))
+cols = int(input("Grid cols: "))
+T = int(input("Time horizon: "))
 
 random.seed(0)
 
 worker_start=[]
+b_init=[]
 for i in range(n):
     worker_start.append((int(input(f"Worker {i} start x: ")),
                          int(input(f"Worker {i} start y: "))))
+    b_init.append(int(input(f"Worker {i} battery: ")))
 
 charger_start=[]
 for j in range(c):
     charger_start.append((int(input(f"Charger {j} start x: ")),
                           int(input(f"Charger {j} start y: "))))
-
-b_init=[]
-for i in range(n):
-    b_init.append(int(input(f"Worker {i} battery: ")))
 
 cost=[[1+random.uniform(0,0.5) for _ in range(T)] for _ in range(n)]
 

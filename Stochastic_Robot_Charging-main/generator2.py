@@ -124,14 +124,18 @@ file.write("\nfor t in range(T):\n")
 
 for w in range(workers):
 
+    worker_assign_terms = ",".join([f"If(assign_{w}_{ch}[t],1,0)" for ch in range(chargers)])
+
     file.write(
-    f" opt.add(Sum([If(assign_{w}_{c}[t],1,0) for c in range(chargers)])<=1)\n"
+    f" opt.add(Sum([{worker_assign_terms}])<=1)\n"
     )
 
 for c in range(chargers):
 
+    charger_assign_terms = ",".join([f"If(assign_{wk}_{c}[t],1,0)" for wk in range(workers)])
+
     file.write(
-    f" opt.add(Sum([If(assign_{w}_{c}[t],1,0) for w in range(workers)])<=1)\n"
+    f" opt.add(Sum([{charger_assign_terms}])<=1)\n"
     )
 
 # Reactive charging
